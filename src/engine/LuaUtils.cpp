@@ -7,6 +7,7 @@
 #include "LuaUtils.hpp"
 
 #include <string>
+#include <unordered_map>
 
 #include <Geode/Geode.hpp>
 
@@ -61,7 +62,7 @@ void updateObjectPosition(EditorUI* editor, GameObject* object) {
             layer->m_pulseTriggersChanged = true;
             break;
         case 747: //old teleport portal
-            if (auto casted = typeinfo_cast<TeleportPortalObject*>(object)) {
+            if (auto casted = static_cast<TeleportPortalObject*>(object)) {
                 updateObjectPosition(editor, casted->m_orangePortal);
             }
             break;
@@ -83,7 +84,7 @@ void updateObjectPosition(EditorUI* editor, GameObject* object) {
     }
     if (object->m_isSpawnOrderTrigger)
         layer->m_spawnOrderObjectsChanged = true;
-    if (object->m_dontIgnoreDuration) if (auto casted = typeinfo_cast<EffectGameObject*>(object))
+    if (object->m_dontIgnoreDuration) if (auto casted = static_cast<EffectGameObject*>(object))
         casted->m_endPosition = CCPoint {0, 0};
     if (speedObjectsUpdated || object->canReverse())
         editor->m_speedObjectsUpdated = true;
@@ -180,7 +181,9 @@ void safeDeleteObject(EditorUI* editor, GameObject* object) {
 
     prepareToDeleteObject(editor, object);
 
-    editor->deleteObject(object, true); //true so it doesn't create an undo command for each one
+    auto editorLayer = editor->m_editorLayer;
+    editorLayer->removeObjectFromSection(object);
+    editorLayer->m_objects->removeObject(object, true);
 }
 GPoint getEditorViewCenter(EditorUI* editor) {
     auto winSize = CCDirector::sharedDirector()->getWinSize();
@@ -197,12 +200,18 @@ void setEditorViewCenter(EditorUI* editor, GPoint pos) {
     auto layerOriginPos = layerPos + screenCenter;
     objectLayer->setPosition(CCPoint(layerOriginPos));
 }
+static std::unordered_map<int, Ref<CCBMFontConfiguration>> g_fontConfigs;
+
 static int loadCurrentFont(GameManager* gameManager) {
     constexpr int maxFont = 59; //as of 2.2074
 
     auto loadedFont = std::clamp(gameManager->m_loadedFont, 0, maxFont);
 
     gameManager->loadFont(loadedFont);
+    if (!g_fontConfigs.contains(loadedFont)) {
+        auto fontName = fontIDToString(loadedFont);
+        g_fontConfigs[loadedFont] = CCBMFontConfiguration::create(fontName.c_str());
+    }
     return loadedFont;
 }
 static std::string fontIDToString(int fontID) {
@@ -212,28 +221,14 @@ static std::string fontIDToString(int fontID) {
         return std::move(fmt::format("gjFont{:02d}.fnt", fontID));
     }
 }
-#include <Geode/modify/GameManager.hpp>
-class $modify(GameManagerFontData, GameManager) {
-    struct Fields {
-        Ref<CCBMFontConfiguration> fontData;
-    };
-
-    $override
-    void loadFont(int index) {
-        GameManager::loadFont(index);
-
-        auto fontName = fontIDToString(m_loadedFont);
-        m_fields->fontData = CCBMFontConfiguration::create(fontName.c_str());
-    }
-};
 std::string getCurrentFontName() {
     auto gameManager = GameManager::get();
     return fontIDToString(loadCurrentFont(gameManager));
 }
 CCBMFontConfiguration* getCurrentFontConfiguration() {
     auto gameManager = GameManager::get();
-    loadCurrentFont(gameManager);
-    return static_cast<GameManagerFontData*>(gameManager)->m_fields->fontData;
+    int loadedFont = loadCurrentFont(gameManager);
+    return g_fontConfigs[loadedFont].data();
 }
 CCArrayExt<TextGameObject> splitText(EditorUI* editor, TextGameObject* text) {
     auto editorLayer = editor->m_editorLayer;
