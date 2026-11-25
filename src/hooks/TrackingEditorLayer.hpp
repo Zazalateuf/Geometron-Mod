@@ -1,9 +1,11 @@
-#include "TrackingEditorLayer.hpp"
+#pragma once
 
-void TrackingEditorLayer::addSpecial(GameObject* object) {
-    LevelEditorLayer::addSpecial(object);
-}
+#include <Geode/Geode.hpp>
+#include <Geode/modify/LevelEditorLayer.hpp>
 
-void TrackingEditorLayer::removeSpecial(GameObject* object) {
-    LevelEditorLayer::removeSpecial(object);
-}
+using namespace geode::prelude;
+
+class $modify(TrackingEditorLayer, LevelEditorLayer) {
+    void addSpecial(GameObject* object);
+    void removeSpecial(GameObject* object);
+};
