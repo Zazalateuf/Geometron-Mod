@@ -1,0 +1,169 @@
+{
+	"geode": "6.0.0",
+	"gd": {
+		"win": "2.2091",
+		"android": "2.2091",
+		"ios": "2.2091",
+		"mac": "2.2091"
+	},
+	"id": "kxtbit.geometron",
+	"name": "Geometron",
+	"version": "v1.0.8",
+	"developer": "kxtbit",
+	"description": "Lua scripting engine for Geometry Dash",
+	"dependencies": {
+		"geode.node-ids": ">=v1.20.0"
+	},
+	"settings": {
+		"title-interface": {
+			"type": "title",
+			"name": "Interface",
+			"description": "Settings relating to the user interface"
+		},
+		"interface-transparent-script-menu": {
+			"type": "bool",
+			"name": "Interface: Transparent Script Menu",
+			"description": "Changes the background of the script menu to a transparent rectangle, similar to the color/HSV overlay",
+			"default": false
+		},
+		"title-lua": {
+			"type": "title",
+			"name": "Lua Engine",
+			"description": "Settings related to the Lua script engine"
+		},
+		"lua-max-execution-time": {
+			"type": "float",
+			"name": "Lua: Max Execution Time",
+			"description": "Controls the maximum amount of time Lua scripts can execute for in one frame before they are paused (so the game can render), specified in milliseconds",
+			"default": 5,
+			"min": 0,
+			"max": 100,
+			"controls": {
+				"arrows": true,
+				"arrow-step": 0.1,
+				"big-arrows": true,
+				"big-arrow-step": 1,
+				"slider": true,
+				"slider-step": 1,
+				"input": true
+			}
+		},
+		"lua-interrupt-resolution": {
+			"type": "int",
+			"name": "Lua: Interrupt Resolution",
+			"description": "Sets the intervals of Lua VM instructions after which the max execution time will be checked",
+			"default": 10000000,
+			"min": 1,
+			"max": 1000000000,
+			"controls": {
+				"arrows": true,
+				"arrow-step": 1,
+				"big-arrows": true,
+				"big-arrow-step": 100,
+				"slider": true,
+				"slider-step": 10,
+				"input": true
+			}
+		},
+		"lua-uninterruptible-grace-time": {
+			"type": "float",
+			"name": "Lua: Uninterruptible Grace Time",
+			"description": "Controls the amount of time the Lua script is allowed to be in a non-yieldable context (e.g. a metamethod) before it is forcibly terminated",
+			"default": 500,
+			"min": 0,
+			"max": 500,
+			"controls": {
+				"arrows": true,
+				"arrow-step": 1,
+				"big-arrows": true,
+				"big-arrow-step": 10,
+				"slider": true,
+				"slider-step": 10,
+				"input": true
+			}
+		},
+		"lua-disable-preemption-system": {
+			"type": "bool",
+			"name": "Lua: Disable Preemption System",
+			"description": "Completely disables preempting (pausing) of Lua scripts when they execute for too long; this could potentially speed up execution, but an infinite loop will also freeze the game",
+			"default": false
+		},
+		"lua-allow-debug-library": {
+			"type": "bool",
+			"name": "Lua: Allow Debug Library",
+			"description": "Controls whether or not to allow access to the debug.* library for Lua scripts, mostly useful for developing Geometron itself; do not enable unless you completely trust the scripts you are running, as this makes it incredibly easy to escape the sandbox!",
+			"default": false
+		},
+		"lua-allow-bytecode-loading": {
+			"type": "bool",
+			"name": "Lua: Allow Bytecode Loading",
+			"description": "Controls whether or not to allow Lua scripts to load arbitrary bytecode; do not enable unless you completely trust the scripts you are running, as Lua bytecode loading has been known to have major vulnerabilities!",
+			"default": false
+		},
+		"title-console": {
+			"type": "title",
+			"name": "Console",
+			"description": "Settings relating to the in-game script console"
+		},
+		"console-font-size": {
+			"type": "float",
+			"name": "Console: Font Size",
+			"description": "Controls the size of the font for the script console window, as a multiplier of the default size",
+			"default": 1,
+			"min": 0.25,
+			"max": 4,
+			"controls": {
+				"arrows": true,
+				"arrow-step": 0.125,
+				"slider": true,
+				"slider-step": 0.125,
+				"input": true
+			}
+		},
+		"console-line-height-multiplier": {
+			"type": "float",
+			"name": "Console: Line Height Multiplier",
+			"description": "Controls the amount of separation between lines in the script console window, as a multiplier of the default size; values less than 1 may cause text to overlap",
+			"default": 1,
+			"min": 0.25,
+			"max": 4,
+			"controls": {
+				"arrows": true,
+				"arrow-step": 0.125,
+				"slider": true,
+				"slider-step": 0.125,
+				"input": true
+			}
+		},
+		"console-auto-focus-input": {
+			"type": "bool",
+			"name": "Console: Auto-Focus Input",
+			"description": "If enabled, whenever the script window is opened while the console tab is selected, the console input text box will automatically be focused.",
+			"default": false
+		},
+		"title-keybinds": {
+			"type": "title",
+			"name": "Keybinds",
+			"description": "Keybinds for Geometron"
+		},
+		"keybind-script-menu": {
+			"type": "keybind",
+			"name": "Open Script Menu",
+			"default": "Ctrl+B",
+			"category": "editor"
+		}
+	},
+	"resources": {
+		"fonts": {
+
+		},
+		"spritesheets": {
+			"GeometronButtons": [
+				"resources/button/*.png"
+			]
+		}
+	},
+	"links": {
+		"source": "https://github.com/kxtbit/Geometron"
+	}
+}
