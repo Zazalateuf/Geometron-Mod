@@ -15,8 +15,13 @@ using namespace geode::prelude;
 
 ScriptLoader* ScriptLoader::instance;
 void ScriptLoader_init() {
-    // Geode v6: Mod::getSaveDir() returns an asp::fs::Path; convert it back to std::filesystem::path
-    std::filesystem::path saveDir = Mod::get()->getSaveDir().toStdPath();
+    auto saveDirRes = Mod::get()->getSaveDir();
+    if (!saveDirRes) {
+        log::error("Failed to retrieve mod save directory: {}", saveDirRes.unwrapErr());
+        return;
+    }
+
+    std::filesystem::path saveDir = saveDirRes.unwrap();
     ScriptLoader::instance = new ScriptLoader(saveDir / "scripts", saveDir / "workspace");
 }
 
@@ -103,4 +108,3 @@ std::optional<std::string> ScriptLoader::loadScript(const std::string& name) con
 
     return data;
 }
-
