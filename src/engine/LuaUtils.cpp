@@ -202,6 +202,13 @@ void setEditorViewCenter(EditorUI* editor, GPoint pos) {
 }
 static std::unordered_map<int, Ref<CCBMFontConfiguration>> g_fontConfigs;
 
+static std::string fontIDToString(int fontID) {
+    if (fontID == 0) {
+        return "bigFont.fnt"s;
+    } else {
+        return std::move(fmt::format("gjFont{:02d}.fnt", fontID));
+    }
+}
 static int loadCurrentFont(GameManager* gameManager) {
     constexpr int maxFont = 59; //as of 2.2074
 
@@ -213,13 +220,6 @@ static int loadCurrentFont(GameManager* gameManager) {
         g_fontConfigs[loadedFont] = CCBMFontConfiguration::create(fontName.c_str());
     }
     return loadedFont;
-}
-static std::string fontIDToString(int fontID) {
-    if (fontID == 0) {
-        return "bigFont.fnt"s;
-    } else {
-        return std::move(fmt::format("gjFont{:02d}.fnt", fontID));
-    }
 }
 std::string getCurrentFontName() {
     auto gameManager = GameManager::get();
@@ -359,3 +359,4 @@ extern "C" void _internal_assert(int condition, const char* message) {
         __builtin_debugtrap();
     }
 }
+```[cite: 9]
