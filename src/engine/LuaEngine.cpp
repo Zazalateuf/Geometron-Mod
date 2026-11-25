@@ -609,7 +609,13 @@ void LuaEngine::editorSetup(EditorUI* editor) {
         auto editorLayer = engine->editor->m_editorLayer;
         GameObject* target = object.has_value() ? object.value() : editorLayer->getGroupParent(group);
         if (target != nullptr && gameObjectExists(target)) {
-            editorLayer->removeGroupParent(target, group);
+            if (auto arr = static_cast<CCArray*>(editorLayer->m_parentGroupIDs->objectForKey(target->m_uniqueID))) {
+                for (int i = static_cast<int>(arr->count()) - 1; i >= 0; i--) {
+                    if (auto idObj = static_cast<CCInteger*>(arr->objectAtIndex(i)); idObj && idObj->getValue() == group) {
+                        arr->removeObjectAtIndex(i);
+                    }
+                }
+            }
         }
     });
     editorTable.set_function("getGroupsParentOf", [](GameObject* object, curengine engine, sol::this_state lua) {
@@ -684,7 +690,7 @@ void LuaEngine::editorSetup(EditorUI* editor) {
             auto object = objects.raw_get<sol::optional<GameObject*>>(i);
             if (!object.has_value() || !gameObjectExists(object.value())) continue;
 
-            auto keyframe = typeinfo_cast<KeyframeGameObject*>(object.value());
+            auto keyframe = static_cast<KeyframeGameObject*>(object.value());
             if (!keyframe) continue;
             keyframe->m_keyframeGroup = keyframeGroup;
             keyframe->m_keyframeIndex = keyframeIndex++;
@@ -694,7 +700,7 @@ void LuaEngine::editorSetup(EditorUI* editor) {
     });
     editorTable.set_function("getLinkedKeyframes", [](sol::variadic_args args, GameObject* object, curengine engine, sol::this_state lua) -> sol::table {
         checkObjectExists(lua, object);
-        auto keyframe = typeinfo_cast<KeyframeGameObject*>(object);
+        auto keyframe = static_cast<KeyframeGameObject*>(object);
         if (keyframe == nullptr) {
             luaL_error(lua, "object is not a subclass of KeyframeGameObject");
             return nullptr; //line should never execute
