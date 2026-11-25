@@ -1,17 +1,9 @@
-// ReSharper disable CppHidingFunction
-#pragma once
+#include "TrackingEditorLayer.hpp"
 
-#ifndef GEOMETRON_TRACKINGEDITORLAYER_HPP
-#define GEOMETRON_TRACKINGEDITORLAYER_HPP
+void TrackingEditorLayer::addSpecial(GameObject* object) {
+    LevelEditorLayer::addSpecial(object);
+}
 
-#include <Geode/Geode.hpp>
-
-using namespace geode::prelude;
-
-#include <Geode/modify/LevelEditorLayer.hpp>
-class $modify(TrackingEditorLayer, LevelEditorLayer) {
-    void addSpecial(GameObject* object);
-    void removeSpecial(GameObject* object);
-};
-
-#endif //GEOMETRON_TRACKINGEDITORLAYER_HPP
+void TrackingEditorLayer::removeSpecial(GameObject* object) {
+    LevelEditorLayer::removeSpecial(object);
+}
