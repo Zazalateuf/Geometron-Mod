@@ -359,4 +359,3 @@ extern "C" void _internal_assert(int condition, const char* message) {
         __builtin_debugtrap();
     }
 }
-```[cite: 9]
