@@ -1,11 +1,3 @@
-// ReSharper disable CppHidingFunction
-// ReSharper disable CppLocalVariableMayBeConst
-// ReSharper disable CppMemberFunctionMayBeStatic
-// ReSharper disable CppParameterMayBeConst
-// ReSharper disable CppParameterMayBeConstPtrOrRef
-// ReSharper disable CppMemberFunctionMayBeConst
-// ReSharper disable CppFunctionalStyleCast
-
 #include <Geode/Geode.hpp>
 
 #include "engine/LuaEngine.hpp"
@@ -16,17 +8,7 @@ using namespace geode::prelude;
 #include <Geode/modify/EditorUI.hpp>
 
 class $modify(GeometronEditorUI, EditorUI) {
-    static void luaPanic(sol::optional<std::string> msg) {
-        if (msg) {
-            log::error("Lua panic triggered: {}", msg.value());
-        } else {
-            log::error("Lua panic triggered with no error info");
-        }
-
-*reinterpret_cast<volatile int*>(0) = 1;
-    }
-
-$override
+    $override
     bool init(LevelEditorLayer* editorLayer) {
         if (!EditorUI::init(editorLayer)) {
             return false;
@@ -37,8 +19,7 @@ this->addEventListener(
                 Mod::get(),
                 "keybind-script-menu"
             ),
-
-[this](
+            [this](
                 Keybind const& keybind,
                 bool down,
                 bool repeat,
@@ -57,7 +38,8 @@ if (scene == nullptr) {
                     return ListenerResult::Propagate;
                 }
 
-CCArrayExt<CCNode*> children = scene->getChildren();
+CCArrayExt<CCNode*> children =
+                    scene->getChildren();
 
 for (auto child : children) {
                     if (
@@ -70,11 +52,13 @@ for (auto child : children) {
                     }
                 }
 
-auto popup = ScriptSelectorPopup::create(this);
+auto popup =
+                    ScriptSelectorPopup::create(this);
 
 if (popup == nullptr) {
                     log::error(
-                        "Geometron: could not initialize script selector"
+                        "Geometron: failed to create "
+                        "ScriptSelectorPopup"
                     );
                     return ListenerResult::Propagate;
                 }
@@ -90,11 +74,13 @@ return true;
     }
 
 void onScriptButton(CCObject* object) {
-        auto popup = ScriptSelectorPopup::create(this);
+        auto popup =
+            ScriptSelectorPopup::create(this);
 
 if (popup == nullptr) {
             log::error(
-                "Geometron: could not initialize script selector"
+                "Geometron: failed to create "
+                "ScriptSelectorPopup"
             );
             return;
         }
@@ -106,22 +92,10 @@ popup->m_noElasticity = true;
 $override
     void createMoveMenu() {
         /*
-         * Important:
-         * We intentionally do not add the custom Geometron button here.
-         *
-         * The previous implementation accessed:
-         *
-         *   m_editButtonBar->m_buttonArray
-         *   m_editButtonBar->reloadItems(...)
-         *
-         * while the editor UI was still being initialized.
-         * This caused Geometry Dash to crash when opening the editor.
-         *
-         * The script menu remains accessible with Ctrl+B, as defined
-         * in mod.json.
+         * Le bouton personnalisé est désactivé temporairement.
+         * L'accès au menu se fait avec Ctrl+B.
          */
-
-EditorUI::createMoveMenu();
+        EditorUI::createMoveMenu();
     }
 };
 
