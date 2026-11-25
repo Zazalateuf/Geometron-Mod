@@ -5,15 +5,16 @@
 // ReSharper disable CppParameterMayBeConstPtrOrRef
 // ReSharper disable CppMemberFunctionMayBeConst
 // ReSharper disable CppFunctionalStyleCast
+
 #include <Geode/Geode.hpp>
 
 #include "engine/LuaEngine.hpp"
-
 #include "ui/ScriptSelectorPopup.hpp"
 
 using namespace geode::prelude;
 
 #include <Geode/modify/EditorUI.hpp>
+
 class $modify(GeometronEditorUI, EditorUI) {
     static void luaPanic(sol::optional<std::string> msg) {
         if (msg) {
@@ -21,100 +22,135 @@ class $modify(GeometronEditorUI, EditorUI) {
         } else {
             log::error("Lua panic triggered with no error info");
         }
-        *reinterpret_cast<volatile int*>(0) = 1;
+
+*reinterpret_cast<volatile int*>(0) = 1;
     }
 
-    $override
+$override
     bool init(LevelEditorLayer* editorLayer) {
-        if (!EditorUI::init(editorLayer)) return false;
+        if (!EditorUI::init(editorLayer)) {
+            return false;
+        }
 
-        this->addEventListener(
-            KeybindSettingPressedEventV3(Mod::get(), "keybind-script-menu"),
-            [this](Keybind const& keybind, bool down, bool repeat, double timestamp) {
+this->addEventListener(
+            KeybindSettingPressedEventV3(
+                Mod::get(),
+                "keybind-script-menu"
+            ),
+
+[this](
+                Keybind const& keybind,
+                bool down,
+                bool repeat,
+                double timestamp
+            ) {
                 if (!down) {
                     return ListenerResult::Propagate;
                 }
 
-                auto scene = CCScene::get();
-                CCArrayExt<CCNode*> children = scene->getChildren();
-                for (auto child : children) {
-                    //do not open the script selector again if it is already open
-                    if (child->getUserObject("is-script-selector-popup")) return ListenerResult::Propagate;
+auto scene = CCScene::get();
+
+if (scene == nullptr) {
+                    log::error(
+                        "Geometron: current scene is null"
+                    );
+                    return ListenerResult::Propagate;
                 }
 
-                auto popup = ScriptSelectorPopup::create(this);
-                if (!popup) {
-                    log::error("Could not initialize script selector");
-                } else {
-                    popup->m_noElasticity = true;
-                    popup->show();
+CCArrayExt<CCNode*> children = scene->getChildren();
+
+for (auto child : children) {
+                    if (
+                        child != nullptr &&
+                        child->getUserObject(
+                            "is-script-selector-popup"
+                        )
+                    ) {
+                        return ListenerResult::Propagate;
+                    }
                 }
-                return ListenerResult::Propagate;
+
+auto popup = ScriptSelectorPopup::create(this);
+
+if (popup == nullptr) {
+                    log::error(
+                        "Geometron: could not initialize script selector"
+                    );
+                    return ListenerResult::Propagate;
+                }
+
+popup->m_noElasticity = true;
+                popup->show();
+
+return ListenerResult::Propagate;
             }
         );
 
-        return true;
+return true;
     }
 
-    void onScriptButton(CCObject* object) {
+void onScriptButton(CCObject* object) {
         auto popup = ScriptSelectorPopup::create(this);
-        if (!popup) {
-            log::error("Could not initialize script selector");
+
+if (popup == nullptr) {
+            log::error(
+                "Geometron: could not initialize script selector"
+            );
             return;
         }
-        popup->m_noElasticity = true;
+
+popup->m_noElasticity = true;
         popup->show();
-        /*auto dir = Mod::get()->getSaveDir();
-        auto result = file::readString(dir / "testscript.lua");
-        if (!result.ok()) {
-            log::error("Failed to read testscript.lua: {}", result.err().value_or("unknown"));
-            return;
-        }
-        runLuaScript(result.ok().value());*/
     }
 
-    $override
+$override
     void createMoveMenu() {
-        EditorUI::createMoveMenu();
+        /*
+         * Important:
+         * We intentionally do not add the custom Geometron button here.
+         *
+         * The previous implementation accessed:
+         *
+         *   m_editButtonBar->m_buttonArray
+         *   m_editButtonBar->reloadItems(...)
+         *
+         * while the editor UI was still being initialized.
+         * This caused Geometry Dash to crash when opening the editor.
+         *
+         * The script menu remains accessible with Ctrl+B, as defined
+         * in mod.json.
+         */
 
-        auto button = this->getSpriteButton("script_button.png"_spr,
-            menu_selector(GeometronEditorUI::onScriptButton),
-            nullptr, 0.9f);
-        button->setID("script-button"_spr);
-        m_editButtonBar->m_buttonArray->addObject(button);
-
-        auto rows = GameManager::sharedState()->getIntGameVariable("0049");
-        auto columns = GameManager::sharedState()->getIntGameVariable("0050");
-        m_editButtonBar->reloadItems(rows, columns);
+EditorUI::createMoveMenu();
     }
 };
 
-/*#include <Geode/modify/GameManager.hpp>
-class $modify(GameManager) {
-    $override
-    void returnToLastScene(GJGameLevel* level) {
-        auto scene = CCDirector::sharedDirector()->getRunningScene();
-        if (scene->getChildByType<LevelEditorLayer>(0) != nullptr) {
-            auto engine = LuaEngine::get();
-            if (engine->editor != nullptr) {
-                //log::info("must reset engine");
-                engine->forceReset();
-            }
-        }
-        GameManager::returnToLastScene(level);
-    }
-};*/
 #include <Geode/modify/AppDelegate.hpp>
-class $modify(AppDelegate) {
+
+class $modify(GeometronAppDelegate, AppDelegate) {
     $override
-    void willSwitchToScene(CCScene* scene) override {
-        if (LuaEngine::isInitialized()) if (auto engine = LuaEngine::get(); engine->editor != nullptr) {
-            auto editorLayer = scene->getChildByType<LevelEditorLayer>(0);
-            if (editorLayer == nullptr || editorLayer->m_editorUI != engine->editor) {
-                //log::info("must reset engine");
-                engine->forceReset();
+    void willSwitchToScene(CCScene* scene) {
+        if (LuaEngine::isInitialized()) {
+            auto engine = LuaEngine::get();
+
+if (
+                engine != nullptr &&
+                engine->editor != nullptr
+            ) {
+                auto editorLayer =
+                    scene != nullptr
+                        ? scene->getChildByType<LevelEditorLayer>(0)
+                        : nullptr;
+
+if (
+                    editorLayer == nullptr ||
+                    editorLayer->m_editorUI != engine->editor
+                ) {
+                    engine->forceReset();
+                }
             }
         }
-        AppDelegate::willSwitchToScene(scene);
+
+AppDelegate::willSwitchToScene(scene);
     }
 };
