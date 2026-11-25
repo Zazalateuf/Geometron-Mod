@@ -605,8 +605,12 @@ void LuaEngine::editorSetup(EditorUI* editor) {
         }
         return false;
     });
-    editorTable.set_function("removeGroupParent", [](int group, curengine engine) {
-        engine->editor->m_editorLayer->removeGroupParent(group);
+    editorTable.set_function("removeGroupParent", [](int group, sol::optional<GameObject*> object, curengine engine, sol::this_state lua) {
+        auto editorLayer = engine->editor->m_editorLayer;
+        GameObject* target = object.has_value() ? object.value() : editorLayer->getGroupParent(group);
+        if (target != nullptr && gameObjectExists(target)) {
+            editorLayer->removeGroupParent(target, group);
+        }
     });
     editorTable.set_function("getGroupsParentOf", [](GameObject* object, curengine engine, sol::this_state lua) {
         checkObjectExists(lua, object);
