@@ -81,8 +81,8 @@ SC_REG(UISettingsGameObject);
 
 template<class O>
 static O* subclassCast(GameObject* object, lua_State* L) {
-    if (O* sub = typeinfo_cast<O*>(object)) {
-        return sub;
+    if (object != nullptr) {
+        return static_cast<O*>(object);
     } else {
         constexpr FixedString errStr(FixedString("object is not a subclass of "), object_subclass_name<O>::v);
         luaL_where(L, 1);
