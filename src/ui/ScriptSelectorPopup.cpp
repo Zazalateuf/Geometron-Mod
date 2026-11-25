@@ -58,16 +58,41 @@ bool ScriptSelectorPopup::init(EditorUI* editor) {
     }
 
     auto scriptLoader = ScriptLoader::get();
-    auto scripts = scriptLoader->getScripts();
-    if (!scriptLoader->isLoaded()) {
-        errorMessage = "ScriptLoader failed to initialize properly.\nCheck the logs for more details.";
-        return true;
-    }
-    engine = LuaEngine::get();
-    if (!engine) {
-        errorMessage = "LuaEngine failed to initialize properly.\nCheck the logs for more details.";
-        return true;
-    }
+
+if (scriptLoader == nullptr) {
+    log::error("Geometron: ScriptLoader is null");
+
+errorMessage =
+        "ScriptLoader failed to initialize properly.\n"
+        "Check the Geode logs for more details.";
+
+return true;
+}
+
+auto scripts = scriptLoader->getScripts();
+
+if (!scriptLoader->isLoaded()) {
+    log::error("Geometron: ScriptLoader is not loaded");
+
+errorMessage =
+        "ScriptLoader failed to initialize properly.\n"
+        "Check the Geode logs for more details.";
+
+return true;
+}
+
+engine = LuaEngine::get();
+
+if (engine == nullptr) {
+    log::error("Geometron: LuaEngine is null");
+
+errorMessage =
+        "LuaEngine failed to initialize properly.\n"
+        "Check the Geode logs for more details.";
+
+return true;
+}
+
 
     tabMenu = CCMenu::create();
     tabMenu->setPosition({popupSize.width / 2, popupSize.height - 22});
