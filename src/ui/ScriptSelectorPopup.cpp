@@ -40,6 +40,7 @@ if (luaEngine != nullptr) {
 if (
                     console != nullptr &&
                     console->consoleTab != nullptr &&
+                    console->consoleTab->getParent() != nullptr &&
                     console->consoleTab->isVisible()
                 ) {
                     console->sendConsoleInput(nullptr);
@@ -58,8 +59,20 @@ return CCKeyboardDispatcher::dispatchKeyboardMSG(
 };
 
 inline static float FONT_SIZE_MULT = 0.6f;
-inline static std::string FONT_NAME =
-    "geode.loader/mdFontMono.fnt";
+
+// Si la police mono de Geode est introuvable, on retombe sur chatFont.fnt
+// (une police absente provoquait un pointeur nul -> crash a l'ouverture).
+static std::string const& consoleFontName() {
+    static std::string name = [] {
+        std::string preferred = "geode.loader/mdFontMono.fnt";
+        if (CCBMFontConfiguration::create(preferred.c_str()) != nullptr) {
+            return preferred;
+        }
+        log::warn("Geometron: {} not found, using chatFont.fnt", preferred);
+        return std::string("chatFont.fnt");
+    }();
+    return name;
+}
 
 bool ScriptSelectorPopup::init(EditorUI* editor) {
     if (editor == nullptr) {
@@ -480,7 +493,7 @@ consoleText = EnhancedTextPanel::create(
             12 *
                 Settings::consoleLineHeightMultiplier() *
                 Settings::consoleFontSize(),
-            FONT_NAME,
+            consoleFontName(),
             FONT_SIZE_MULT *
                 Settings::consoleFontSize()
         );
@@ -500,6 +513,16 @@ consoleText->setAnchorPoint({0, 0});
         consoleText->setID("console-output-text"_spr);
 
 consoleWindow->addInnerChild(consoleText);
+
+// Rejoue l'historique de la console deja present dans le moteur.
+        for (auto const& l : engine->getLines()) {
+            consoleText->addLine(
+                l.ends_with('\n') ? l.substr(0, l.size() - 1) : l
+            );
+        }
+        consoleWindow->resizeInner(
+            consoleText->lineCount() * consoleText->getLineHeight()
+        );
         consoleTab->addChildAtPosition(
             consoleWindow,
             Anchor::Center,
@@ -509,7 +532,7 @@ consoleWindow->addInnerChild(consoleText);
 consoleInput = TextInput::create(
             consoleInSize.width - 40,
             "",
-            FONT_NAME
+            consoleFontName()
         );
 
 if (consoleInput == nullptr) {
@@ -695,51 +718,508 @@ if (focused != consoleInputShifted) {
 }
 
 void ScriptSelectorPopup::updateScriptStatus(bool force) {
-    if (engine == nullptr) {
+    if (engine == nullptr || statusLabel == nullptr) {
         return;
     }
 
-if (
+    if (
         engine->fastGetIsExecuting() &&
         engine->getStatus().type != STOPPED
     ) {
-        auto status = engine->getStatus();
+        auto const& status = engine->getStatus();
 
-bool changed = force;
+        bool changed = force;
 
-if (status.scriptName != lastScriptName) {
+        if (status.scriptName != lastScriptName) {
             lastScriptName = status.scriptName;
             changed = true;
         }
 
-if (status.type != lastExecutionType) {
+        if (status.type != lastExecutionType) {
             lastExecutionType = status.type;
             changed = true;
         }
 
-if (status.yieldType != lastYieldType) {
+        if (status.yieldType != lastYieldType) {
             lastYieldType = status.yieldType;
             changed = true;
         }
 
-if (changed) {
-            lastScriptName = status.scriptName;
-
-if (loadingIndicator != nullptr) {
+        if (changed) {
+            if (loadingIndicator != nullptr) {
                 loadingIndicator->setVisible(true);
             }
 
-if (cancelButton != nullptr) {
+            if (cancelButton != nullptr) {
                 cancelButton->setVisible(true);
             }
 
-std::string statusName = "(Unknown status)";
+            std::string statusName = "(Unknown status)";
 
-switch (status.yieldType) {
-                case PREEMPTED:
-                case MANUAL:
+            switch (status.type) {
+                case TERMINATING_TIMEOUT:
+                    statusName = "Terminating (timed out)...";
+                    break;
+                case TERMINATING_CANCELED:
+                    statusName = "Canceling...";
+                    break;
+                case YIELDING:
+                    switch (status.yieldType) {
+                        case SLEEPING:
+                            statusName = "Sleeping...";
+                            break;
+                        case WAITING_FOR_CONSOLE_NEWLINE:
+                        case WAITING_FOR_CONSOLE_CHARACTERS:
+                            statusName = "Waiting for input...";
+                            break;
+                        case PREEMPTED:
+                        case MANUAL:
+                            statusName = "Running...";
+                            break;
+                    }
+                    break;
+                case RUNNING:
+                default:
                     statusName = "Running...";
                     break;
+            }
 
-case SLEEPING:
+            statusLabel->setString(
+                fmt::format(
+                    "{}: {}",
+                    status.scriptName,
+                    statusName
+                ).c_str()
+            );
+            statusLabel->limitLabelWidth(
+                m_mainLayer->getContentWidth() - 100.0f,
+                0.5f,
+                0.1f
+            );
+        }
+    } else {
+        // Aucun script en cours
+        lastScriptName.clear();
+        lastExecutionType = static_cast<ScriptExecutionType>(-1);
+        lastYieldType = static_cast<ScriptYieldType>(-1);
 
+        if (loadingIndicator != nullptr) {
+            loadingIndicator->setVisible(false);
+        }
+
+        if (cancelButton != nullptr) {
+            cancelButton->setVisible(false);
+        }
+
+        statusLabel->setString("");
+    }
+}
+
+void ScriptSelectorPopup::addConsoleLine(const std::string& line) {
+    if (consoleText == nullptr || consoleWindow == nullptr) {
+        return;
+    }
+
+    bool atBottom =
+        consoleWindow->scrollHeight() <
+        consoleText->getLineHeight() / 2.0f;
+
+    consoleText->addLine(line);
+    consoleWindow->resizeInner(
+        consoleText->lineCount() * consoleText->getLineHeight()
+    );
+
+    if (atBottom) {
+        consoleWindow->scrollTo(0);
+    }
+}
+
+void ScriptSelectorPopup::onConsoleLine(const std::string& line) {
+    addConsoleLine(line);
+}
+
+void ScriptSelectorPopup::onConsoleText(const std::string& text) {
+    if (consoleText == nullptr || consoleWindow == nullptr) {
+        return;
+    }
+
+    int count = consoleText->lineCount();
+
+    if (count <= 0) {
+        addConsoleLine(text);
+        return;
+    }
+
+    bool atBottom =
+        consoleWindow->scrollHeight() <
+        consoleText->getLineHeight() / 2.0f;
+
+    consoleText->setLine(
+        count - 1,
+        consoleText->getLineFromBottom(0) + text
+    );
+    consoleWindow->resizeInner(
+        consoleText->lineCount() * consoleText->getLineHeight()
+    );
+
+    if (atBottom) {
+        consoleWindow->scrollTo(0);
+    }
+}
+
+void ScriptSelectorPopup::sendConsoleInput(CCObject*) {
+    if (engine == nullptr || consoleInput == nullptr) {
+        return;
+    }
+
+    std::string text = consoleInput->getString();
+    consoleInput->setString("");
+
+    // sendInputString fait aussi l'écho dans la console.
+    engine->sendInputString(text + "\n");
+
+    consoleInput->focus();
+}
+
+void ScriptSelectorPopup::setTab(int tab) const {
+    lastTabIndex = tab;
+
+    if (
+        m_mainLayer == nullptr ||
+        scriptTab == nullptr ||
+        consoleTab == nullptr
+    ) {
+        return;
+    }
+
+    CCNode* shown = tab == 0 ? scriptTab : consoleTab;
+    CCNode* hidden = tab == 0 ? consoleTab : scriptTab;
+
+    // Les onglets sont retenus (retain), on peut donc les détacher sans risque.
+    if (hidden->getParent() != nullptr) {
+        hidden->removeFromParent();
+    }
+
+    if (shown->getParent() == nullptr) {
+        m_mainLayer->addChild(shown);
+    }
+
+    auto highlight = [](CCMenuItemSpriteExtra* button, bool active) {
+        if (button == nullptr) {
+            return;
+        }
+
+        if (
+            auto sprite = typeinfo_cast<ButtonSprite*>(
+                button->getNormalImage()
+            )
+        ) {
+            sprite->updateBGImage(
+                active ? "GJ_button_02.png" : "GJ_button_04.png"
+            );
+        }
+    };
+
+    highlight(scriptTabButton, tab == 0);
+    highlight(consoleTabButton, tab == 1);
+}
+
+void ScriptSelectorPopup::onClickTab(CCObject* object) {
+    auto node = typeinfo_cast<CCNode*>(object);
+
+    if (node == nullptr) {
+        return;
+    }
+
+    int tab = node->getTag();
+    setTab(tab);
+
+    if (tab == 1 && Settings::consoleAutoFocusInput()) {
+        if (consoleInput != nullptr) {
+            consoleInput->focus();
+        }
+    }
+}
+
+static void showScriptResult(
+    const std::string& name,
+    const ScriptResult& result
+) {
+    std::string message;
+
+    switch (result.result) {
+        case OK:
+        case SCRIPT_CANCELED:
+            return;
+        case LUA_RUN_ERROR:
+            message = fmt::format(
+                "Runtime error in {}:\n{}",
+                name,
+                result.errorMessage
+            );
+            break;
+        case LUA_COMPILE_ERROR:
+            message = fmt::format(
+                "Compile error in {}:\n{}",
+                name,
+                result.errorMessage
+            );
+            break;
+        case ENGINE_LOCKED:
+            message =
+                "The Lua engine is busy, please try again.";
+            break;
+        case ENGINE_IN_USE:
+            message =
+                "Another script is already running.";
+            break;
+    }
+
+    FLAlertLayer::create(
+        "Geometron",
+        message,
+        "OK"
+    )->show();
+}
+
+void ScriptSelectorPopup::startScript(
+    const std::string& code,
+    const std::string& name,
+    int flag
+) {
+    if (engine == nullptr || editor == nullptr) {
+        return;
+    }
+
+    auto task = engine->executeAsync(
+        editor,
+        code,
+        name,
+        flag
+    );
+
+    if (!task) {
+        return;
+    }
+
+    // Passe par le moteur : il ne notifie que la console encore enregistrée,
+    // donc aucun accès à un popup déjà fermé.
+    task->onProgress = [](const ScriptExecutionStatus*) {
+        if (LuaEngine::isInitialized()) {
+            LuaEngine::get()->updateScriptStatusForConsole();
+        }
+    };
+
+    task->setOnResult([name](ScriptResult result) {
+        showScriptResult(name, result);
+
+        if (LuaEngine::isInitialized()) {
+            LuaEngine::get()->updateScriptStatusForConsole();
+        }
+    });
+
+    updateScriptStatus(true);
+}
+
+void ScriptSelectorPopup::onClickRun(CCObject* object) {
+    auto node = typeinfo_cast<CCNode*>(object);
+    auto scriptLoader = ScriptLoader::get();
+
+    if (
+        node == nullptr ||
+        scriptLoader == nullptr ||
+        engine == nullptr
+    ) {
+        return;
+    }
+
+    auto scripts = scriptLoader->getScripts();
+    int index = node->getTag();
+
+    if (index < 0 || index >= static_cast<int>(scripts.size())) {
+        return;
+    }
+
+    auto const& entry = scripts[index];
+    auto code = scriptLoader->loadScript(entry.name);
+
+    if (!code) {
+        FLAlertLayer::create(
+            "Geometron",
+            fmt::format("Could not read script {}", entry.name),
+            "OK"
+        )->show();
+        return;
+    }
+
+    startScript(*code, entry.name, 0);
+
+    // L'éditeur doit rester utilisable : on ferme le menu après le lancement.
+    this->onClose(nullptr);
+}
+
+static const char* REPL_SCRIPT = R"LUA(local running = true
+function exit()
+    running = false
+    error("exited", 0)
+end
+
+local function compile(input)
+    --try expression first
+    local func, err = load("return " .. input, "=interactive")
+    if not func then
+        func, err = load(input, "=interactive")
+    end
+    return func, err
+end
+local function run(func)
+    local ret = table.pack(pcall(func))
+    if ret.n >= 2 then
+        print(table.unpack(ret, 2, ret.n))
+    end
+end
+local function isIncompleteStatement(err)
+    local i, j = string.find(err, "<eof>", 1, true)
+    if i and j == #err then
+        return true
+    end
+    return false
+end
+local function multiline(firstInput)
+    local str = firstInput
+    while true do
+        io.write(" .. > ")
+
+        local input = io.read()
+        if input == "" then return end
+
+        str = str .. "\n" .. input
+        local func, err = compile(str)
+
+        if func then
+            run(func)
+            return
+        else
+            if not isIncompleteStatement(err) then
+                print(err)
+                return
+            end
+        end
+    end
+end
+
+local specialNames = {
+    O = editor.getSelectedObject;
+    OA = function() return smart(editor.getSelectedObjects()) end;
+}
+setmetatable(_ENV, {
+    __index = function(_, name)
+        local specialFunc = specialNames[name]
+        if specialFunc then
+            return specialFunc()
+        end
+        return nil
+    end
+})
+CO = editor.createObject
+function CCO(id, ...)
+    local obj = editor.createObject(id, ...)
+    if obj then
+        obj.pos = editor.getViewGridCenter()
+        if id == 747 then
+            obj.orangePortal.y = obj.y + 100
+        end
+    end
+    return obj
+end
+P = point.new
+
+while running do
+    io.write("> ")
+
+    local input = io.read()
+    local func, err = compile(input)
+
+    if not func then
+        if isIncompleteStatement(err) then
+            multiline(input)
+        else
+            print(err)
+        end
+    else
+        run(func)
+    end
+
+    if not running then break end
+end
+)LUA";
+
+void ScriptSelectorPopup::onRunInteractive(CCObject*) {
+    if (engine == nullptr) {
+        return;
+    }
+
+    std::string code = REPL_SCRIPT;
+
+    // Un repl.lua placé dans le dossier des scripts est prioritaire.
+    if (auto loader = ScriptLoader::get()) {
+        if (auto custom = loader->loadScript("repl.lua")) {
+            code = *custom;
+        }
+    }
+
+    startScript(code, "<interactive>", 1);
+    setTab(1);
+
+    if (consoleInput != nullptr) {
+        consoleInput->focus();
+    }
+}
+
+void ScriptSelectorPopup::onClickCancel(CCObject*) {
+    if (engine == nullptr) {
+        return;
+    }
+
+    auto const& status = engine->getStatus();
+
+    if (
+        status.asyncData.isAsync &&
+        status.asyncData.task != nullptr
+    ) {
+        status.asyncData.task->cancel();
+    }
+}
+
+void ScriptSelectorPopup::onKeybindRelease() {
+    // Rien à faire : le menu est ouvert à l'appui de la touche.
+}
+
+ScriptSelectorPopup* ScriptSelectorPopup::create(EditorUI* editor) {
+    auto ret = new ScriptSelectorPopup();
+
+    if (ret->init(editor)) {
+        ret->autorelease();
+        return ret;
+    }
+
+    delete ret;
+    return nullptr;
+}
+
+void ScriptSelectorPopup::show() {
+    Popup::show();
+
+    if (engine != nullptr) {
+        engine->registerConsole(this);
+        updateScriptStatus(true);
+    }
+}
+
+void ScriptSelectorPopup::onClose(CCObject* sender) {
+    if (engine != nullptr) {
+        engine->unregisterConsole(this);
+    }
+
+    Popup::onClose(sender);
+}
