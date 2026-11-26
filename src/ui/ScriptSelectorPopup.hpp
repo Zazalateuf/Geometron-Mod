@@ -18,7 +18,7 @@ class ScriptSelectorPopup : public Popup {
     LuaEngine* engine = nullptr;
 
     CCMenu* scriptTab = nullptr;
-    ListView* list = nullptr;
+    ScrollingWindow* list = nullptr;
     ListBorders* listBorders = nullptr;
     CCMenu* consoleTab = nullptr;
     CCScale9Sprite* consoleBG = nullptr;
