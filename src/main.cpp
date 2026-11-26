@@ -25,7 +25,7 @@ this->addEventListener(
                 bool repeat,
                 double timestamp
             ) {
-                if (!down) {
+                if (!down || repeat) {
                     return ListenerResult::Propagate;
                 }
 
