@@ -21,6 +21,10 @@ bool EnhancedTextPanel::init(ScrollingWindow* newWindow, float newLineHeight, st
     fontScale = newFontScale;
 
     fontData = CCBMFontConfiguration::create(fontName.c_str());
+    if (!fontData) {
+        log::error("Geometron: could not load font {}", fontName);
+        return false;
+    }
 
     scheduleUpdate();
     return true;
