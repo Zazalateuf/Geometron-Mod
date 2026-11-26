@@ -385,52 +385,85 @@ row->addChild(label);
 rows.push_back(row);
         }
 
-list = ListView::create(
-            rows.inner(),
-            rowSize.height,
-            listSize.width,
-            listSize.height
-        );
+// ListView/TableView plante dans Geode 6 (macOS arm64) :
+        // on utilise une zone de défilement simple à la place.
+        list = ScrollingWindow::create(listSize);
 
-if (list == nullptr) {
+        if (list == nullptr) {
             log::error(
                 "Geometron: could not create scripts list"
             );
             return false;
         }
 
-list->setPosition(listPosition);
+        list->setAnchorPoint({0.5f, 0.5f});
         list->ignoreAnchorPointForPosition(false);
+        list->setPosition(listPosition);
         list->setID("script-list"_spr);
 
-listBorders = ListBorders::create();
+        float totalHeight = std::max(
+            listSize.height,
+            rowSize.height * static_cast<float>(rows.size())
+        );
+        list->resizeInner(totalHeight);
 
-if (listBorders == nullptr) {
+        for (size_t i = 0; i < rows.size(); i++) {
+            auto row = rows[i];
+            row->setAnchorPoint({0, 0});
+            row->setPosition({
+                0,
+                totalHeight -
+                    rowSize.height * static_cast<float>(i + 1)
+            });
+
+            if (i % 2 == 1) {
+                auto stripe = CCLayerColor::create(
+                    {255, 255, 255, 12},
+                    rowSize.width,
+                    rowSize.height
+                );
+                stripe->setZOrder(-1);
+                row->addChild(stripe);
+            }
+
+            list->addInnerChild(row);
+        }
+
+        // Affiche le haut de la liste.
+        list->scrollTo(totalHeight - listSize.height);
+
+        listBorders = ListBorders::create();
+
+        if (listBorders == nullptr) {
             log::error(
                 "Geometron: could not create list borders"
             );
             return false;
         }
 
-listBorders->setContentSize(
+        listBorders->setContentSize(
             listSize + CCSize(3, 5)
         );
         listBorders->setPosition(listPosition);
         listBorders->setZOrder(1);
         listBorders->setID("script-list-border"_spr);
 
-if (Settings::interfaceTransparentScriptMenu()) {
-            list->setPrimaryCellColor({0, 0, 0});
-            list->setSecondaryCellColor({
-                25,
-                25,
-                25
-            });
-            list->setCellOpacity(90);
+        if (Settings::interfaceTransparentScriptMenu()) {
             listBorders->setVisible(false);
+        } else {
+            auto listBG = CCLayerColor::create(
+                {0, 0, 0, 90},
+                listSize.width,
+                listSize.height
+            );
+            listBG->ignoreAnchorPointForPosition(false);
+            listBG->setAnchorPoint({0.5f, 0.5f});
+            listBG->setPosition(listPosition);
+            listBG->setZOrder(-1);
+            scriptTab->addChild(listBG);
         }
 
-scriptTab->addChild(list);
+        scriptTab->addChild(list);
         scriptTab->addChild(listBorders);
     }
 
