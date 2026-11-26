@@ -15,7 +15,7 @@ using namespace geode::prelude;
 class ScriptSelectorPopup : public Popup {
     Ref<EditorUI> editor;
 
-    LuaEngine* engine;
+    LuaEngine* engine = nullptr;
 
     CCMenu* scriptTab = nullptr;
     ListView* list = nullptr;
@@ -36,8 +36,8 @@ class ScriptSelectorPopup : public Popup {
     CCMenuItemSpriteExtra* cancelButton = nullptr;
 
     std::string lastScriptName;
-    ScriptExecutionType lastExecutionType;
-    ScriptYieldType lastYieldType;
+    ScriptExecutionType lastExecutionType = static_cast<ScriptExecutionType>(-1);
+    ScriptYieldType lastYieldType = static_cast<ScriptYieldType>(-1);
 
     std::optional<std::string> errorMessage;
 
@@ -63,6 +63,8 @@ class ScriptSelectorPopup : public Popup {
     void onRunInteractive(CCObject* object);
 
     void onClickCancel(CCObject* object);
+
+    void startScript(const std::string& code, const std::string& name, int flag);
 
     friend class ConsoleKeyboardHook;
 
